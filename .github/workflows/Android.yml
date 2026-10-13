@@ -38,6 +38,7 @@ jobs:
 
     - name: Compile RA
       run: |
+       git clone --depth=1 https://github.com/libretro/retroarch-assets.git pkg/android/phoenix/assets
         cd pkg/android/phoenix
         # A repository that answers with a server error is retried with
         # a backoff (2 s doubling, six tries) before Gradle gives up on
