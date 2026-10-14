@@ -8253,6 +8253,12 @@ bool input_core_set_sensor_state(unsigned port,
       case RETRO_SENSOR_GYROSCOPE_DISABLE:
          input_st->core_gyro_rate = 0;
          break;
+      case RETRO_SENSOR_ILLUMINANCE_ENABLE:
+         input_st->core_illuminance_rate = rate;
+         break;
+      case RETRO_SENSOR_ILLUMINANCE_DISABLE:
+         input_st->core_illuminance_rate = 0;
+         break;
       default:
          break;
    }
@@ -8271,6 +8277,8 @@ float input_core_get_sensor_state(unsigned port, unsigned id)
    if (  id >= RETRO_SENSOR_GYROSCOPE_X
       && id <= RETRO_SENSOR_GYROSCOPE_Z
       && !input_st->core_gyro_rate)
+      return 0.0f;
+   if (id == RETRO_SENSOR_ILLUMINANCE && !input_st->core_illuminance_rate)
       return 0.0f;
 
    return input_get_sensor_state(port, id);
@@ -14768,6 +14776,21 @@ void input_driver_poll(void)
             input_set_sensor_state(0, RETRO_SENSOR_ACCELEROMETER_DISABLE, 0);
             input_set_sensor_state(0, RETRO_SENSOR_GYROSCOPE_DISABLE, 0);
             input_st->frontend_sensors_enabled = false;
+         }
+      }
+
+      /* Always enable illuminance sensor when input_sensors_enable is true */
+      {
+         static bool illuminance_active = false;
+         if (sensors_on && !illuminance_active)
+         {
+            input_set_sensor_state(0, RETRO_SENSOR_ILLUMINANCE_ENABLE, 60);
+            illuminance_active = true;
+         }
+         else if (!sensors_on && illuminance_active)
+         {
+            input_set_sensor_state(0, RETRO_SENSOR_ILLUMINANCE_DISABLE, 0);
+            illuminance_active = false;
          }
       }
 

@@ -959,6 +959,7 @@ typedef struct
    bool platform_menu_button;
    unsigned core_accel_rate; /* >0 means core wants accel at this rate */
    unsigned core_gyro_rate;  /* >0 means core wants gyro at this rate */
+   unsigned core_illuminance_rate; /* >0 means core wants illuminance at this rate */
    /* First-press port assignment, see input_first_press_apply():
     * buttons seen released on a user with no core port, the users to
     * map at the next frame boundary, and whether any of it is live. */

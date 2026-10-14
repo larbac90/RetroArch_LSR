@@ -314,7 +314,7 @@ bool autosave_init(bool compress_files, unsigned autosave_interval)
 
       core_get_memory(&mem_info);
 
-      if (mem_info.size == 0)
+      if (mem_info.size == 0 || !mem_info.data)
          continue;
 
       if (!(auto_st = autosave_new(path,

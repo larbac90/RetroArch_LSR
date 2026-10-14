@@ -4175,8 +4175,8 @@ bool runloop_environment_cb(unsigned cmd, void *data)
                return false;
             }
 
-            /* The core might request a mic before the mic driver 
-             * is initialized, so we still have to see if the 
+            /* The core might request a mic before the mic driver
+             * is initialized, so we still have to see if the
              * frontend intends to init a mic driver. */
             if (!driver && memcmp(settings->arrays.microphone_driver,
                      "null", sizeof("null")) == 0)
@@ -5550,6 +5550,7 @@ void runloop_event_deinit_core(void)
       input_driver_state_t *input_st = input_state_get_ptr();
       input_st->core_accel_rate      = 0;
       input_st->core_gyro_rate       = 0;
+      input_st->core_illuminance_rate = 0;
    }
 
    video_driver_cached_frame_retire();

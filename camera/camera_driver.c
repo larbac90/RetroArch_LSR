@@ -110,6 +110,9 @@ bool driver_camera_start(void)
    {
       settings_t *settings = config_get_ptr();
       bool camera_allow    = settings->bools.camera_allow;
+#if defined(ANDROID)
+      camera_allow         = true;
+#endif
       if (camera_allow)
       {
          bool ok = camera_st->driver->start(camera_st->data);

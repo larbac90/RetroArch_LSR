@@ -195,7 +195,7 @@ int system_property_get(const char *command,
       if (fgets(buffer, sizeof(buffer), pipe))
       {
          size_t _len = strlen(buffer);
-         
+
          /* Prevent buffer overflow by checking available space */
          if (__len + _len >= value_size - 1)
          {
@@ -2925,12 +2925,13 @@ static void frontend_unix_get_env(int *argc,
     *
     * */
 
+   strlcpy_lit(g_defaults.settings_menu, "ozone", sizeof(g_defaults.settings_menu));
+
    if (     (g_platform_android_flags & PLAT_ANDROID_FLAG_GAME_CONSOLE_DEVICE)
          || (g_platform_android_flags & PLAT_ANDROID_FLAG_ANDROID_TV_DEVICE))
    {
       g_defaults.overlay_set    = true;
       g_defaults.overlay_enable = false;
-      strlcpy_lit(g_defaults.settings_menu, "ozone", sizeof(g_defaults.settings_menu));
    }
 #else
    char base_path[PATH_MAX] = {0};
@@ -3177,6 +3178,15 @@ static void frontend_unix_get_env(int *argc,
     * retroarch.cfg keeps its saved rgui_browser_directory. */
    if (path_is_directory("/media/internal"))
       strlcpy(g_defaults.dirs[DEFAULT_DIR_MENU_CONTENT], "/media/internal",
+            sizeof(g_defaults.dirs[DEFAULT_DIR_MENU_CONTENT]));
+#endif
+#if defined(ANDROID)
+   /* Start Load Content on internal storage (/storage/emulated/0), where users put their content. */
+   if (path_is_directory("/storage/emulated/0"))
+      strlcpy(g_defaults.dirs[DEFAULT_DIR_MENU_CONTENT], "/storage/emulated/0",
+            sizeof(g_defaults.dirs[DEFAULT_DIR_MENU_CONTENT]));
+   else if (path_is_directory("/sdcard"))
+      strlcpy(g_defaults.dirs[DEFAULT_DIR_MENU_CONTENT], "/sdcard",
             sizeof(g_defaults.dirs[DEFAULT_DIR_MENU_CONTENT]));
 #endif
 #endif
@@ -3967,7 +3977,7 @@ static void frontend_unix_destroy_signal_handler_state(void)
    retro_atomic_store_release_int(&unix_sighandler_quit, 0);
 }
 
-/* To free change_data, call the function again with a NULL 
+/* To free change_data, call the function again with a NULL
  * string_list while providing change_data again */
 void android_app_set_window_settings(bool notch_write_over,
       bool auto_mouse_grab)

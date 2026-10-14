@@ -215,6 +215,7 @@ typedef struct android_input
    unsigned pointer_count;
    sensor_t accelerometer_state;                /* float alignment */
    sensor_t gyroscope_state;                    /* float alignment */
+   float illuminance_state;
    float mouse_x_prev, mouse_y_prev;
    struct input_pointer pointer[MAX_TOUCH];     /* int16_t alignment */
    char device_model[256];
@@ -959,6 +960,8 @@ static void android_input_poll_main_cmd(void)
                   (UINT64_C(1) << RETRO_SENSOR_ACCELEROMETER_DISABLE));
             bool enable_gyroscope       = (android_app->sensor_state_mask &
                   (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_DISABLE));
+            bool enable_illuminance     = (android_app->sensor_state_mask &
+                  (UINT64_C(1) << RETRO_SENSOR_ILLUMINANCE_DISABLE));
 
             /* On first focus (no sensor state yet), enable if setting is on.
              * This handles shader sensor access without going through cores.
@@ -980,6 +983,7 @@ static void android_input_poll_main_cmd(void)
             {
                enable_accelerometer = false;
                enable_gyroscope     = false;
+               enable_illuminance   = false;
             }
 
             runloop_set_platform_paused(false);
@@ -1027,6 +1031,26 @@ static void android_input_poll_main_cmd(void)
                }
             }
 
+            if (enable_illuminance)
+            {
+               if (!input_set_sensor_state(0,
+                     RETRO_SENSOR_ILLUMINANCE_ENABLE,
+                     android_app->illuminance_event_rate) &&
+                   !android_app->input_alive)
+               {
+                  /* Input driver not ready — enable sensor directly */
+                  unsigned rate = android_app->illuminance_event_rate;
+                  if (rate == 0)
+                     rate = DEFAULT_ASENSOR_EVENT_RATE;
+                  android_input_enable_sensor_manager(android_app);
+                  if (android_enable_sensor(android_app,
+                        android_app->illuminanceSensor, rate,
+                        RETRO_SENSOR_ILLUMINANCE_ENABLE,
+                        RETRO_SENSOR_ILLUMINANCE_DISABLE))
+                     android_app->illuminance_event_rate = rate;
+               }
+            }
+
             /* Start gravity-based orientation detection (once per app launch only).
              * Samples accelerometer data over ~30 frames to determine which axis
              * gravity is on, detecting both display rotation and sensor IC
@@ -1058,6 +1082,9 @@ static void android_input_poll_main_cmd(void)
             bool disable_gyroscope      = (android_app->sensor_state_mask &
                   (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_ENABLE)) &&
                         android_app->gyroscopeSensor;
+            bool disable_illuminance    = (android_app->sensor_state_mask &
+                  (UINT64_C(1) << RETRO_SENSOR_ILLUMINANCE_ENABLE)) &&
+                        android_app->illuminanceSensor;
 
             runloop_set_platform_paused(true);
             video_driver_set_stub_frame();
@@ -1072,6 +1099,11 @@ static void android_input_poll_main_cmd(void)
                input_set_sensor_state(0,
                      RETRO_SENSOR_GYROSCOPE_DISABLE,
                      android_app->gyroscope_event_rate);
+
+            if (disable_illuminance)
+               input_set_sensor_state(0,
+                     RETRO_SENSOR_ILLUMINANCE_DISABLE,
+                     android_app->illuminance_event_rate);
          }
          /* No waiter: onWindowFocusChanged() posts the command and
           * returns without blocking, so the lock and broadcast only
@@ -2727,6 +2759,7 @@ static void android_input_poll_user(android_input_t *android)
    struct android_app *android_app = (struct android_app*)g_android;
    bool poll_accelerometer         = false;
    bool poll_gyroscope             = false;
+   bool poll_illuminance           = false;
 
    if (!android_app->sensorEventQueue)
       return;
@@ -2739,7 +2772,11 @@ static void android_input_poll_user(android_input_t *android)
          (UINT64_C(1) << RETRO_SENSOR_GYROSCOPE_ENABLE)) &&
                android_app->gyroscopeSensor;
 
-   if (poll_accelerometer || poll_gyroscope)
+   poll_illuminance   = (android_app->sensor_state_mask &
+         (UINT64_C(1) << RETRO_SENSOR_ILLUMINANCE_ENABLE)) &&
+               android_app->illuminanceSensor;
+
+   if (poll_accelerometer || poll_gyroscope || poll_illuminance)
    {
       ASensorEvent event;
       while (ASensorEventQueue_getEvents(
@@ -2803,6 +2840,10 @@ static void android_input_poll_user(android_input_t *android)
                android->gyroscope_state.x = event.data[0];
                android->gyroscope_state.y = event.data[1];
                android->gyroscope_state.z = event.data[2];
+               break;
+            case ASENSOR_TYPE_LIGHT:
+               android->illuminance_state = event.data[0];
+               RARCH_LOG("[Android Sensor] Light sensor event: %f lux\n", (double)event.data[0]);
                break;
             default:
                break;
@@ -3300,6 +3341,14 @@ static void android_input_enable_sensor_manager(struct android_app *android_app)
             ASensorManager_getDefaultSensor(android_app->sensorManager,
                ASENSOR_TYPE_GYROSCOPE);
 
+      if (!android_app->illuminanceSensor)
+      {
+         android_app->illuminanceSensor =
+            ASensorManager_getDefaultSensor(android_app->sensorManager,
+               ASENSOR_TYPE_LIGHT);
+         RARCH_LOG("[Android Sensor] illuminanceSensor found: %p\n", (void*)android_app->illuminanceSensor);
+      }
+
       if (!android_app->sensorEventQueue)
          android_app->sensorEventQueue =
             ASensorManager_createEventQueue(android_app->sensorManager,
@@ -3318,8 +3367,10 @@ static bool android_enable_sensor(struct android_app *android_app,
    if (!android_app->sensorEventQueue || !sensor)
       return false;
 
-   if (ASensorEventQueue_enableSensor(
-            android_app->sensorEventQueue, sensor) >= 0)
+   int ret = ASensorEventQueue_enableSensor(
+            android_app->sensorEventQueue, sensor);
+   RARCH_LOG("[Android Sensor] enableSensor return value: %d for sensor %p\n", ret, (void*)sensor);
+   if (ret >= 0)
    {
       ASensorEventQueue_setEventRate(android_app->sensorEventQueue,
             sensor, (1000L / rate) * 1000);
@@ -3409,12 +3460,47 @@ static bool android_input_set_sensor_state(void *data, unsigned port,
             BIT64_SET(android_app->sensor_state_mask, RETRO_SENSOR_GYROSCOPE_DISABLE);
             return true;
 
+         case RETRO_SENSOR_ILLUMINANCE_ENABLE:
+            if (!android_app->illuminanceSensor)
+               android_input_enable_sensor_manager(android_app);
+            if (android_enable_sensor(android_app,
+                  android_app->illuminanceSensor, event_rate,
+                  RETRO_SENSOR_ILLUMINANCE_ENABLE,
+                  RETRO_SENSOR_ILLUMINANCE_DISABLE))
+            {
+               android_app->illuminance_event_rate = event_rate;
+               return true;
+            }
+            return false;
+
+         case RETRO_SENSOR_ILLUMINANCE_DISABLE:
+            if (android_app->sensorEventQueue &&
+                  android_app->illuminanceSensor)
+            {
+               ASensorEventQueue_disableSensor(android_app->sensorEventQueue,
+                     android_app->illuminanceSensor);
+            }
+
+            android->illuminance_state = 0.0f;
+
+            BIT64_CLEAR(android_app->sensor_state_mask, RETRO_SENSOR_ILLUMINANCE_ENABLE);
+            BIT64_SET(android_app->sensor_state_mask, RETRO_SENSOR_ILLUMINANCE_DISABLE);
+            return true;
+
          default:
             break;
       }
    }
 
    return false;
+}
+
+static float g_java_illuminance_state = 0.0f;
+
+JNIEXPORT void JNICALL Java_com_retroarch_browser_retroactivity_RetroActivityCommon_nativeSetIlluminance(
+      JNIEnv *env, jobject thiz, jfloat lux)
+{
+   g_java_illuminance_state = lux;
 }
 
 static float android_input_get_sensor_input(void *data,
@@ -3438,6 +3524,8 @@ static float android_input_get_sensor_input(void *data,
             return android->gyroscope_state.y;
          case RETRO_SENSOR_GYROSCOPE_Z:
             return android->gyroscope_state.z;
+         case RETRO_SENSOR_ILLUMINANCE:
+            return g_java_illuminance_state > 0.0f ? g_java_illuminance_state : android->illuminance_state;
       }
    }
 

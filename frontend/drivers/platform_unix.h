@@ -130,10 +130,12 @@ struct android_app
    retro_atomic_int_t unfocused;
    unsigned accelerometer_event_rate;
    unsigned gyroscope_event_rate;
+   unsigned illuminance_event_rate;
    ASensorManager *sensorManager;
    ASensorEventQueue *sensorEventQueue;
    const ASensor* accelerometerSensor;
    const ASensor* gyroscopeSensor;
+   const ASensor* illuminanceSensor;
    uint64_t sensor_state_mask;
    unsigned detected_screen_rotation;
    float    gravity_accum_x;

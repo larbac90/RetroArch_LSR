@@ -29,6 +29,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.hardware.input.InputManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
@@ -105,6 +109,12 @@ public class RetroActivityCommon extends NativeActivity
   private boolean mStartupSettingsPaused;
   public boolean sustainedPerformanceMode = true;
   public int screenOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+
+  private SensorManager mSensorManager;
+  private Sensor mLightSensor;
+  private SensorEventListener mLightSensorListener;
+
+  public native void nativeSetIlluminance(float lux);
 
   /* USB HID rumble: action string for the runtime permission broadcast. */
   private static final String ACTION_USB_PERMISSION = "com.retroarch.USB_PERMISSION";
@@ -208,6 +218,9 @@ public class RetroActivityCommon extends NativeActivity
   @Override
   protected void onPause()
   {
+    if (mSensorManager != null && mLightSensorListener != null) {
+      mSensorManager.unregisterListener(mLightSensorListener);
+    }
     if (mStartupSettingsPending)
       mStartupSettingsPaused = true;
     super.onPause();
@@ -217,6 +230,24 @@ public class RetroActivityCommon extends NativeActivity
   protected void onCreate(Bundle savedInstanceState) {
     if (savedInstanceState != null)
       mStartupSettingsPending = savedInstanceState.getBoolean("startupSettingsPending");
+
+    mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+    if (mSensorManager != null) {
+      mLightSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+      if (mLightSensor != null) {
+        mLightSensorListener = new SensorEventListener() {
+          @Override
+          public void onSensorChanged(SensorEvent event) {
+            if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
+              nativeSetIlluminance(event.values[0]);
+            }
+          }
+          @Override
+          public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+        };
+      }
+    }
+
     /* The symlink pass walks the app data and native library trees,
      * which is disk I/O that does not belong on the UI thread.  Run
      * it on a worker and let it release its half of the startup gate
@@ -952,6 +983,9 @@ public class RetroActivityCommon extends NativeActivity
   protected void onResume()
   {
     super.onResume();
+    if (mSensorManager != null && mLightSensor != null && mLightSensorListener != null) {
+      mSensorManager.registerListener(mLightSensorListener, mLightSensor, SensorManager.SENSOR_DELAY_UI);
+    }
     if (mStartupSettingsPending && mStartupSettingsPaused)
     {
       mStartupSettingsPending = false;
