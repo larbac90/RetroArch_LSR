@@ -4636,8 +4636,8 @@ static void ozone_update_content_metadata(ozone_handle_t *ozone,
       const char *core_label             = NULL;
       const struct playlist_entry *entry = NULL;
       ssize_t playlist_index             = selection;
-      size_t list_size                   = MENU_LIST_GET_SELECTION(menu_list, 0)->size;
-      file_list_t *list                  = MENU_LIST_GET_SELECTION(menu_list, 0);
+      file_list_t *list                  = menu_list ? MENU_LIST_GET_SELECTION(menu_list, 0) : NULL;
+      size_t list_size                   = list ? list->size : 0;
 
       if (ozone->flags2 & OZONE_FLAG2_IS_QUICK_MENU)
       {
@@ -7674,14 +7674,14 @@ OZONE_NOINLINE static void ozone_draw_osk(
          int rect_h = (j < 2) ? cursor_s : cursor_h;
 
          gfx_display_draw_quad(
-            p_disp, 
-            userdata, 
+            p_disp,
+            userdata,
             video_dims,
-            rect_x, 
-            rect_y, 
+            rect_x,
+            rect_y,
             VIDEO_SCALE_PACK(rect_w, rect_h),
-            video_dims, 
-            cursor_color, 
+            video_dims,
+            cursor_color,
             NULL);
       }
    }
@@ -9998,7 +9998,7 @@ static void *ozone_init(void **userdata, bool video_is_threaded)
    out_dims = video_driver_get_output_dims();
 
    /* Also used as a tag for cursor animation */
-   ozone->default_theme                         = &ozone_theme_dark; 
+   ozone->default_theme                         = &ozone_theme_dark;
 
    ozone->last_framebuffer_opacity              = -1.0f;
    ozone->last_dims                             = out_dims;
