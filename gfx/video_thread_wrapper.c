@@ -598,7 +598,13 @@ static void video_thread_wait_reply(thread_video_t *thr, thread_packet_t *pkt)
          retro_eventcount_cancel_wait(&thr->reply_ec);
          continue;
       }
-      video_thread_commit_wait(&thr->reply_ec, key);
+      if (retro_eventcount_commit_wait_timeout(&thr->reply_ec, key, 3000000LL))
+      {
+         if (retro_atomic_load_acquire_int(&thr->reply_cmd) == (int)pkt->type)
+            break;
+         if (!retro_atomic_load_acquire_int(&thr->worker_running))
+            break;
+      }
    }
    retro_atomic_fetch_sub_int(&thr->waiter_call.waiters, 1);
    VIDEO_THREAD_CMD_WAIT_LEAVE(thr);
@@ -647,7 +653,11 @@ static void video_thread_user_acquire(thread_video_t *thr)
             retro_eventcount_cancel_wait(&thr->user_ec);
             continue;
          }
-         video_thread_commit_wait(&thr->user_ec, key);
+         if (retro_eventcount_commit_wait_timeout(&thr->user_ec, key, 3000000LL))
+         {
+            if (retro_atomic_cas_int(&thr->user_busy, 0, 1))
+               break;
+         }
       }
       retro_atomic_store_release_size(&thr->user_owner, (size_t)self);
    }
