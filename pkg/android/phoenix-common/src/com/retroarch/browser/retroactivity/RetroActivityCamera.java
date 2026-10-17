@@ -61,7 +61,7 @@ public class RetroActivityCamera extends RetroActivityCommon
   /**
    * Executed when the {@link Camera} is done capturing.
    * <p>
-   * Note that this does not release the currently held 
+   * Note that this does not release the currently held
    * {@link Camera} instance and must be freed by calling
    * {@link #onCameraFree}
    */
@@ -70,8 +70,13 @@ public class RetroActivityCamera extends RetroActivityCommon
     if (!camera_service_running)
       return;
 
-    if (mCamera != null)
-      mCamera.stopPreview();
+    if (mCamera != null) {
+      try {
+        mCamera.stopPreview();
+      } catch (Exception e) {
+        Log.e("RetroActivity", "stopPreview: " + e.getMessage());
+      }
+    }
     camera_service_running = false;
   }
 
@@ -84,10 +89,20 @@ public class RetroActivityCamera extends RetroActivityCommon
 
     if (mCamera != null)
     {
-      mCamera.setPreviewCallbackWithBuffer(null);
-      mCamera.release();
+      final Camera cameraToRelease = mCamera;
+      mCamera = null;
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            cameraToRelease.setPreviewCallbackWithBuffer(null);
+            cameraToRelease.release();
+          } catch (Exception e) {
+            Log.e("RetroActivity", "releaseCamera: " + e.getMessage());
+          }
+        }
+      }).start();
     }
-    mCamera = null;
     rawPending.set(null);
   }
 
@@ -147,14 +162,14 @@ public class RetroActivityCamera extends RetroActivityCommon
 
   /**
    * Polls the camera for updates to the {@link SurfaceTexture}.
-   * 
+   *
    * @return true if polling was successful, false otherwise.
    */
   public boolean onCameraPoll()
   {
     if (!camera_service_running)
       return false;
-    
+
     if (texture == null)
     {
       Log.i("RetroActivity", "No texture");
@@ -166,15 +181,15 @@ public class RetroActivityCamera extends RetroActivityCommon
       {
         texture.updateTexImage();
       }
-      
+
       long newTimestamp = texture.getTimestamp();
-      
+
       if (newTimestamp != lastTimestamp)
       {
         lastTimestamp = newTimestamp;
         return true;
       }
-      
+
       return false;
     }
 
@@ -184,8 +199,8 @@ public class RetroActivityCamera extends RetroActivityCommon
   /**
    * Initializes the {@link SurfaceTexture} used by the
    * {@link Camera} with a given OpenGL texure ID.
-   * 
-   * @param gl_texid texture ID to initialize the 
+   *
+   * @param gl_texid texture ID to initialize the
    *        {@link SurfaceTexture} with.
    */
   public void onCameraTextureInit(int gl_texid)
@@ -197,7 +212,7 @@ public class RetroActivityCamera extends RetroActivityCommon
   /**
    * Sets the {@link Camera} texture with the texture represented
    * by the given OpenGL texture ID.
-   * 
+   *
    * @param gl_texid     The texture ID representing the texture to set the camera to.
    * @return false when there is no camera to set it on.
    */
@@ -360,7 +375,7 @@ public class RetroActivityCamera extends RetroActivityCommon
     SharedPreferences.Editor edit = prefs.edit();
     edit.putBoolean("CAMERA_UPDATES_ON", camera_service_running);
     edit.apply();
-    
+
     onCameraStop();
     super.onPause();
   }
