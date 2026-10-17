@@ -300,6 +300,13 @@ static void android_app_set_input(struct android_app *android_app,
          (int)ticket, true, -1);
 }
 
+/* Upper bound on how long a lifecycle callback will block waiting for the
+ * app thread to pick the command up. The app thread only reads the command
+ * pipe between frames, so anything that keeps it out of the looper - a core
+ * load, a shader build - holds the UI thread here, and five seconds of that
+ * is an ANR. */
+#define ANDROID_ACTIVITY_STATE_TIMEOUT_US (3 * 1000 * 1000)
+
 /* Replacing a live window posts two commands, so wait on the ticket of
  * the last one: the surface is only safe to hand back to the framework
  * once the app thread has worked through both. Posting neither leaves
@@ -328,15 +335,8 @@ static void android_app_set_window(struct android_app *android_app,
       ticket = android_lifecycle_ticket(&android_app->lc);
 
    android_lifecycle_wait(&android_app->lc, ANDROID_LC_UNTIL_DONE,
-         (int)ticket, true, -1);
+         (int)ticket, true, ANDROID_ACTIVITY_STATE_TIMEOUT_US);
 }
-
-/* Upper bound on how long a lifecycle callback will block waiting for the
- * app thread to pick the command up. The app thread only reads the command
- * pipe between frames, so anything that keeps it out of the looper - a core
- * load, a shader build - holds the UI thread here, and five seconds of that
- * is an ANR. */
-#define ANDROID_ACTIVITY_STATE_TIMEOUT_US (3 * 1000 * 1000)
 
 /* START/RESUME/PAUSE/STOP are notifications: the acknowledged state is
  * the app thread's and nothing acts on it but the waiter, so giving up on the
