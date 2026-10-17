@@ -4356,21 +4356,26 @@ bool command_event(enum event_command cmd, void *data)
             rarch_system_info_t *sys_info   = &runloop_st->system;
             uint8_t flags                   = content_get_flags();
 
+            RARCH_LOG("[CloseDebug] Step 4: CMD_EVENT_UNLOAD_CORE starting\n");
+
             runloop_st->flags              &= ~RUNLOOP_FLAG_CORE_RUNNING;
 
             /* Persist core options before anything below calls
              * back into the core (auto save-state, unload, deinit),
              * so a crash there cannot lose them. */
             runloop_core_options_save();
+            RARCH_LOG("[CloseDebug] Step 4a: runloop_core_options_save done\n");
 
             /* The platform that uses ram_state_save calls it when the content
              * ends and writes it to a file */
             ram_state_to_file();
+            RARCH_LOG("[CloseDebug] Step 4b: ram_state_to_file done\n");
 
             /* Save auto state */
             if (     settings->bools.savestate_auto_save
                   && runloop_st->current_core_type != CORE_TYPE_DUMMY)
                command_event_save_auto_state();
+            RARCH_LOG("[CloseDebug] Step 4c: command_event_save_auto_state done\n");
 
             /* Save last selected disk index, if required */
             if (sys_info)
@@ -4494,6 +4499,7 @@ bool command_event(enum event_command cmd, void *data)
             task_content_load_notify_finish(NULL);
          break;
       case CMD_EVENT_CLOSE_CONTENT:
+         RARCH_LOG("[CloseDebug] Step 2: CMD_EVENT_CLOSE_CONTENT called\n");
 #ifdef HAVE_MENU
          /* If we need to quit, skip unloading the core to avoid performing
           * cleanup actions (like writing autosave state) twice. */
@@ -4510,7 +4516,6 @@ bool command_event(enum event_command cmd, void *data)
             command_event(CMD_EVENT_MENU_TOGGLE, NULL);
 
          menu_st->flags |= MENU_ST_FLAG_PENDING_CLOSE_CONTENT;
-         menu_st->flags |= MENU_ST_FLAG_PENDING_RELOAD_CORE;
 
 #if defined(HAVE_GFX_WIDGETS)
          /* Remove stale notifications after reinit */
