@@ -5226,8 +5226,10 @@ static void uninit_libretro_symbols(
    memset(current_core, 0, sizeof(struct retro_core_t));
 
 #ifdef HAVE_DYNAMIC
+#if !defined(ANDROID) && !defined(__ANDROID__)
    if (lib_handle_local)
       dylib_close(lib_handle_local);
+#endif
 #endif
 
 #ifdef HAVE_OPENXR
@@ -5311,21 +5313,28 @@ static bool core_unload_game(void)
 {
    runloop_state_t *runloop_st    = &runloop_state;
 
+   RARCH_LOG("[CloseDebug] Step 5: core_unload_game starting\n");
+
    /* The core owns the buffer the cache points at and is about to
     * close: wait out any reader before it goes. */
    video_driver_cached_frame_retire();
+   RARCH_LOG("[CloseDebug] Step 5a: video_driver_cached_frame_retire done\n");
 
    if ((runloop_st->current_core.flags & RETRO_CORE_FLAG_GAME_LOADED))
    {
-      RARCH_LOG("[Core] Unloading game...\n");
+      RARCH_LOG("[CloseDebug] Step 5b: retro_unload_game starting...\n");
       runloop_st->current_core.retro_unload_game();
+      RARCH_LOG("[CloseDebug] Step 5c: retro_unload_game done\n");
       runloop_st->core_poll_type_override  = POLL_TYPE_OVERRIDE_DONTCARE;
       runloop_st->current_core.flags      &= ~RETRO_CORE_FLAG_GAME_LOADED;
    }
 
+   RARCH_LOG("[CloseDebug] Step 5d: video_driver_free_hw_context starting...\n");
    video_driver_free_hw_context();
+   RARCH_LOG("[CloseDebug] Step 5e: video_driver_free_hw_context done\n");
 
    audio_driver_stop();
+   RARCH_LOG("[CloseDebug] Step 5f: audio_driver_stop done\n");
 
 #ifdef HAVE_MICROPHONE
    microphone_driver_stop();
@@ -8315,9 +8324,15 @@ static enum runloop_state_enum runloop_check_state(
          }
 
          if (!(menu_st->flags & MENU_ST_FLAG_PENDING_ENV_SHUTDOWN_FLUSH))
+         {
+            RARCH_LOG("[CloseDebug] Step 6: CMD_EVENT_UNLOAD_CORE calling...\n");
             command_event(CMD_EVENT_UNLOAD_CORE, NULL);
+            RARCH_LOG("[CloseDebug] Step 6a: CMD_EVENT_UNLOAD_CORE done\n");
+         }
 
+         RARCH_LOG("[CloseDebug] Step 6b: menu_entries_flush_stack starting...\n");
          menu_entries_flush_stack(flush_target, 0);
+         RARCH_LOG("[CloseDebug] Step 6c: menu_entries_flush_stack done\n");
          /* An annoyance - some menu drivers (Ozone...) set
           * MENU_ST_FLAG_PREVENT_POPULATE in awkward
           * places, which can cause breakage here when flushing
@@ -8336,8 +8351,12 @@ static enum runloop_state_enum runloop_check_state(
 
          /* Ozone requires thumbnail refreshing */
          if (menu_st->driver_ctx && menu_st->driver_ctx->refresh_thumbnail_image)
+         {
+            RARCH_LOG("[CloseDebug] Step 6d: refresh_thumbnail_image starting...\n");
             menu_st->driver_ctx->refresh_thumbnail_image(
                   menu_st->userdata, i);
+            RARCH_LOG("[CloseDebug] Step 6e: refresh_thumbnail_image done\n");
+         }
 
          if (reset_navigation)
             menu_st->selection_ptr = 0;
