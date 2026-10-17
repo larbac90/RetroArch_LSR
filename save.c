@@ -269,9 +269,12 @@ static autosave_t *autosave_new(const char *path,
  **/
 static void autosave_free(autosave_t *handle)
 {
+   if (!handle)
+      return;
+
    retro_atomic_store_release_int(&handle->quit, 1);
    retro_eventcount_notify(&handle->ec);
-   sthread_join(handle->thread);
+   sthread_detach(handle->thread);
 
    free(handle->snapshot);
    retro_eventcount_free(&handle->ec);

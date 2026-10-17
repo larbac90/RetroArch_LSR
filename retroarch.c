@@ -10472,7 +10472,7 @@ bool retroarch_main_quit(void)
    /* A state task still writing - the auto-save just pushed, or one
     * the user started - would leave a truncated file behind the exit. */
    if (first)
-      task_queue_wait(retroarch_quit_state_task_pending, NULL);
+      task_queue_wait_timeout(retroarch_quit_state_task_pending, NULL, 3000000);
    retroarch_main_quit_finish(first);
    return true;
 }
