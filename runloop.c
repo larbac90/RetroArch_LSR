@@ -5311,8 +5311,6 @@ static bool core_unload_game(void)
 {
    runloop_state_t *runloop_st    = &runloop_state;
 
-   video_driver_free_hw_context();
-
    /* The core owns the buffer the cache points at and is about to
     * close: wait out any reader before it goes. */
    video_driver_cached_frame_retire();
@@ -5324,6 +5322,8 @@ static bool core_unload_game(void)
       runloop_st->core_poll_type_override  = POLL_TYPE_OVERRIDE_DONTCARE;
       runloop_st->current_core.flags      &= ~RETRO_CORE_FLAG_GAME_LOADED;
    }
+
+   video_driver_free_hw_context();
 
    audio_driver_stop();
 
