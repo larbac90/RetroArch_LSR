@@ -6388,14 +6388,7 @@ int action_ok_restart_content(const char *path, const char *label, unsigned type
 
 int action_ok_close_content(const char *path, const char *label, unsigned type, size_t idx, size_t entry_idx)
 {
-   settings_t *settings       = config_get_ptr();
-
-   if (settings->bools.menu_show_confirm && settings->bools.confirm_close)
-   {
-      struct menu_state *menu_st = menu_state_get_ptr();
-      menu_dialog_confirm_set(menu_st, MSG_PRESS_AGAIN_TO_CLOSE_CONTENT, CMD_EVENT_CLOSE_CONTENT);
-      return action_ok_dialog_init(menu_st);
-   }
+   RARCH_LOG("[CloseDebug] Step 1: action_ok_close_content called\n");
    return generic_action_ok_command(CMD_EVENT_CLOSE_CONTENT);
 }
 
