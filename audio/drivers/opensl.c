@@ -187,7 +187,10 @@ static void sl_free(void *data)
    {
       SLPlayItf_SetPlayState(sl->player, SL_PLAYSTATE_STOPPED);
       if (sl->buffer_queue)
+      {
+         (*sl->buffer_queue)->RegisterCallback(sl->buffer_queue, NULL, NULL);
          (*sl->buffer_queue)->Clear(sl->buffer_queue);
+      }
       {
          /* A foreign API's state transition has nothing to park on,
           * so this one confirmation loop polls - iteration-bounded,
