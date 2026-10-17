@@ -1253,14 +1253,18 @@ public class RetroActivityCommon extends NativeActivity
       }
     }
 
+    if (getRequestedOrientation() == newOrientation)
+      return;
+
     screenOrientation = newOrientation;
 
     Log.i("RetroActivity", "setting new orientation to " + screenOrientation);
 
+    final int reqOrientation = screenOrientation;
     runOnUiThread(new Runnable() {
       @Override
       public void run() {
-        setRequestedOrientation(screenOrientation);
+        setRequestedOrientation(reqOrientation);
       }
     });
   }
