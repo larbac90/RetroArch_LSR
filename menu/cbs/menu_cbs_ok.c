@@ -6362,27 +6362,11 @@ error:
 
 int action_ok_quit(const char *path, const char *label, unsigned type, size_t idx, size_t entry_idx)
 {
-   settings_t *settings       = config_get_ptr();
-
-   if (settings->bools.menu_show_confirm && settings->bools.confirm_quit)
-   {
-      struct menu_state *menu_st = menu_state_get_ptr();
-      menu_dialog_confirm_set(menu_st, MSG_PRESS_AGAIN_TO_QUIT, CMD_EVENT_QUIT);
-      return action_ok_dialog_init(menu_st);
-   }
    return generic_action_ok_command(CMD_EVENT_QUIT);
 }
 
 int action_ok_restart_content(const char *path, const char *label, unsigned type, size_t idx, size_t entry_idx)
 {
-   settings_t *settings       = config_get_ptr();
-
-   if (settings->bools.menu_show_confirm && settings->bools.confirm_reset)
-   {
-      struct menu_state *menu_st = menu_state_get_ptr();
-      menu_dialog_confirm_set(menu_st, MSG_PRESS_AGAIN_TO_RESET, CMD_EVENT_RESET);
-      return action_ok_dialog_init(menu_st);
-   }
    return generic_action_ok_command(CMD_EVENT_RESET);
 }
 
